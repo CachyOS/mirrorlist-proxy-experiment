@@ -4,7 +4,7 @@ services:
     container_name: archmirrorlist-proxy
     environment:
       - TZ=Europe/Berlin
-      - PORT=3434
+      - PORT=8080
       - REFRESH_INTERVAL=5m
       - REQUEST_TIMEOUT=30m
     restart: on-failure
