@@ -7,9 +7,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
+
+// Our github mirrorlist endpoint
+const GITHUB_MIRRORLIST = "https://raw.githubusercontent.com/CachyOS/CachyOS-PKGBUILDS/refs/heads/master/cachyos-mirrorlist/cachyos-mirrorlist"
 
 // Config used for application "options"
 type Config struct {
@@ -97,19 +101,34 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	// hardcoding content-type based on the endpoint
+	contentType := "application/json"
+	if strings.Contains(r.URL.Path, "mirrorlist") {
+		contentType = "text/plain; charset=utf-8"
+	}
+
+	w.Header().Set("Content-Type", contentType)
 	w.Write(cachedData)
 }
 
 func (p *Proxy) fetchFromUpstream(upstreamPath string) ([]byte, error) {
-	targetURL := *p.config.UpstreamURL
-	targetURL.Path = upstreamPath
+	var targetURL url.URL
+
+	// NOTE: much hacky just to handle hardcoded mirrorlist :/
+	parsedPath, err := url.Parse(upstreamPath)
+	if err == nil && parsedPath.IsAbs() {
+		targetURL = *parsedPath
+	} else {
+		targetURL = *p.config.UpstreamURL
+		targetURL.Path = upstreamPath
+	}
 
 	req, err := http.NewRequest(http.MethodGet, targetURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not create upstream request: %w", err)
 	}
-	req.Header.Set("Accept", "application/json")
+
+	req.Header.Set("Accept", "application/json, text/plain")
 	req.Header.Set("User-Agent", "CachyOSMirrorlistProxy/1.0")
 
 	resp, err := p.httpClient.Do(req)
@@ -136,8 +155,9 @@ func main() {
 	}
 
 	pathMappings := map[string]string{
-		"/status": "/mirrors/status/json/",
-		"/tier1":  "/mirrors/status/tier/1/json/",
+		"/status":             "/mirrors/status/json/",
+		"/tier1":              "/mirrors/status/tier/1/json/",
+		"/cachyos-mirrorlist": GITHUB_MIRRORLIST,
 	}
 
 	appPort := getEnv("PORT", "8080")
@@ -149,7 +169,7 @@ func main() {
 		PathMappings:    pathMappings,
 	}
 
-	log.Println("Starting JSON Caching Proxy with Background Refresh...")
+	log.Println("Starting Caching Proxy with Background Refresh...")
 	log.Printf(" ==> Listening on: %s", config.ListenAddr)
 	log.Printf(" ==> Proxying from: %s", config.UpstreamURL)
 	log.Printf(" ==> Path Mappings:")
