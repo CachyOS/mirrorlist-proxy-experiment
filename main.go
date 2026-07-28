@@ -15,6 +15,9 @@ import (
 // Our github mirrorlist endpoint
 const GITHUB_MIRRORLIST = "https://raw.githubusercontent.com/CachyOS/CachyOS-PKGBUILDS/refs/heads/master/cachyos-mirrorlist/cachyos-mirrorlist"
 
+// CachyOS mirrors API endpoint
+const CACHYOS_MIRRORS_API = "https://packages.cachyos.org/api/v1/mirrors"
+
 // Config used for application "options"
 type Config struct {
 	ListenAddr      string
@@ -158,6 +161,7 @@ func main() {
 		"/status":             "/mirrors/status/json/",
 		"/tier1":              "/mirrors/status/tier/1/json/",
 		"/cachyos-mirrorlist": GITHUB_MIRRORLIST,
+		"/cachyos-mirrors":    CACHYOS_MIRRORS_API,
 	}
 
 	appPort := getEnv("PORT", "8080")
